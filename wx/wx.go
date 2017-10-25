@@ -18,10 +18,6 @@ import (
     "wxbot2/response"
 )
 
-type BaseResponse struct {
-    Ret int
-    ErrMsg string
-}
 
 var SyncHost = []string {
     "wx2.qq.com",
@@ -42,39 +38,6 @@ var SyncHost = []string {
     "webpush2.wx.qq.com",
 }
 
-type Contact struct {
-    Uin int
-    UserName string
-    NickName string
-    HeadImgUrl string
-    ContactFlag int
-    MemberCount int
-    MemberList []string
-    RemarkName string
-    HideInputBarFlag int
-    Sex int
-    Signature string
-    VerifyFlag int
-    OwnerUin int
-    PYInitial string
-    PYQuanPin string
-    RemarkPYInitial string
-    RemarkPYQuanPin string
-    StarFriend int
-    AppAccountFlag int
-    Statues int
-    AttrStatus int
-    Province string
-    City string
-    Alias string
-    SnsFlag int
-    UniFriend int
-    DisplayName string
-    ChatRoomId int
-    KeyWord string
-    EncryChatRoomId string
-    IsOwner int 
-}
 
 type Wxbot struct {
     name string
@@ -95,16 +58,9 @@ type Wxbot struct {
     SyncKey response.SyncKey
 }
 
-type UserInfo struct {
-    Sid string
-}
+
 //{"Uin":"%s","Sid":"%s","Skey":"%s","DeviceID":"%s"}`
-type BaseRequest struct {
-    Uin     string
-    Sid     string
-    Skey    string
-    DeviceID    string
-}
+
 
 type msg struct {
     Error xml.Name `xml:"error"`
@@ -119,13 +75,11 @@ type msg struct {
 
 
 type huge_resp struct {
-    BaseResponse  struct { Ret int
-        ErrMsg string
-    }
+    response.BaseResponse
     Count int
     ContactList []map[string]interface{}
     SyncKey response.SyncKey
-    User user
+    User response.User
     ChatSet string
     Skey string
     ClientVersion int
@@ -137,27 +91,6 @@ type huge_resp struct {
     ClickReportInterval int
 }
 
-type user struct {
-    Uin int
-    UserName string
-    ickName string
-    HeadImgUrl string
-    RemarkName string
-    PYInitial string
-    PYQuanPin string
-    RemarkPYInitial string
-    RemarkPYQuanPin string
-    HideInputBarFlag int
-    StarFriend int
-    Sex int
-    Signature string
-    AppAccountFlag int
-    VerifyFlag int
-    ContactFlag int
-    WebWxPluginSwitch int
-    HeadImgFlag int
-    SnsFlag int
-}
 
 func (w *Wxbot)GetFriends() map[string]string{
     fmt.Println(w.friend)
@@ -213,7 +146,7 @@ func (bot *Wxbot) CheckBaseResponse(resp_body string) error {
         return err
     }
 
-    var b BaseResponse
+    var b response.BaseResponse
     err = json.Unmarshal(*objmap["BaseResponse"], &b)
     if err != nil {
         return err
@@ -600,9 +533,9 @@ func (bot *Wxbot) GetContact() error {
     }
 
     type contact_resp struct {
-        BP BaseResponse
+        BP response.BaseResponse
         MemberCount int
-        MemberList []Contact
+        MemberList []response.Contact
         Seq int
     }
 
@@ -656,7 +589,6 @@ func (bot *Wxbot) Sync(syncHost string) (bool){
     if len(ret)<3{
         return false
     }else{
-
         if (ret[1] == "0"){
             if(ret[2] == "2"){
                 bot.getMsg(syncHost)
@@ -674,7 +606,7 @@ func (bot *Wxbot) getMsg(syncHost string){
     utime := get_unix_time(13)
     unix_time_int, _ := strconv.ParseInt(utime, 10, 64)
     r := ^unix_time_int & 0xFFFFFFFF
-    berq := BaseRequest{
+    berq := response.BaseRequest{
         Sid: bot.login_info["wx_sid"],
         Uin: bot.login_info["wx_uin"],
         Skey:bot.login_info["skey"],

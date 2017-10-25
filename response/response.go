@@ -76,10 +76,15 @@ type Webwxsync struct {
 }
 
 type BaseResponse struct {
-	Ret int64
+	Ret int
 	ErrMsg string
 }
-
+type BaseRequest struct {
+	Uin     string
+	Sid     string
+	Skey    string
+	DeviceID    string
+}
 
 type Profile struct {
 
@@ -135,38 +140,39 @@ type Member struct {
 
 }
 
+
 type Contact struct {
-	Uin int64
+	Uin int
 	UserName string
 	NickName string
 	HeadImgUrl string
-	ContactFlag int64
+	ContactFlag int
+	MemberCount int
+	MemberList []string
 	RemarkName string
-	HideInputBarFlag int64
+	HideInputBarFlag int
 	Sex int
 	Signature string
-	VerifyFlag int64
-	OwnerUin int64
+	VerifyFlag int
+	OwnerUin int
 	PYInitial string
 	PYQuanPin string
 	RemarkPYInitial string
 	RemarkPYQuanPin string
-	StarFriend int64
-	AppAccountFlag int64
-	Statues int64
-	AttrStatus int64
+	StarFriend int
+	AppAccountFlag int
+	Statues int
+	AttrStatus int
 	Province string
 	City string
 	Alias string
-	SnsFlag int64
-	UniFriend int64
+	SnsFlag int
+	UniFriend int
 	DisplayName string
-	ChatRoomId int64
+	ChatRoomId int
 	KeyWord string
 	EncryChatRoomId string
 	IsOwner int
-	MemberCount int64
-	MemberList []Member
 }
 
 type User struct {
@@ -190,6 +196,8 @@ type User struct {
 	HeadImgFlag int64
 	SnsFlag int64
 }
+
+
 
 type MPSubscribeMsg struct {
 
