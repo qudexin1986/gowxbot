@@ -15,13 +15,31 @@ import (
     "net/url"
     "net/http"
     "net/http/cookiejar"
-    "oa.com/melow_dog/qrterm"
-    //"github.com/tonnerre/golang-pretty"
+    "wxbot2/response"
 )
 
 type BaseResponse struct {
     Ret int
     ErrMsg string
+}
+
+var SyncHost = []string {
+    "wx2.qq.com",
+    "webpush.wx2.qq.com",
+    "wx8.qq.com",
+    "webpush.wx8.qq.com",
+    "qq.com",
+    "webpush.wx.qq.com",
+    "web2.wechat.com",
+    "webpush.web2.wechat.com",
+    "wechat.com",
+    "webpush.web.wechat.com",
+    "webpush.weixin.qq.com",
+    "webpush.wechat.com",
+    "webpush1.wechat.com",
+    "webpush2.wechat.com",
+    "webpush.wx.qq.com",
+    "webpush2.wx.qq.com",
 }
 
 type Contact struct {
@@ -61,39 +79,107 @@ type Contact struct {
 type Wxbot struct {
     name string
     session *http.Client
-
     wx_host string
     lang string
     login_prefix string
     file_prefix string
     webpush_prefix string
-
-
     api map[string]string
     login_info map[string]string
-
     special_user []string
     friend map[string]string
     group map[string]string
     mp map[string]string
     offical_user []string
+    msgList chan(response.Msg)
+    SyncKey response.SyncKey
+}
+
+type UserInfo struct {
+    Sid string
+}
+//{"Uin":"%s","Sid":"%s","Skey":"%s","DeviceID":"%s"}`
+type BaseRequest struct {
+    Uin     string
+    Sid     string
+    Skey    string
+    DeviceID    string
+}
+
+type msg struct {
+    Error xml.Name `xml:"error"`
+    Ret string `xml:"ret"`
+    Message string `xml:"message"`
+    Skey string `xml:"skey"`
+    Wxsid string `xml:"wxsid"`
+    Wxuin string `xml:"wxuin"`
+    Pass_ticket string `xml:"pass_ticket"`
+    Isgrayscale string `xml:"isgrayscale"`
 }
 
 
+type huge_resp struct {
+    BaseResponse  struct { Ret int
+        ErrMsg string
+    }
+    Count int
+    ContactList []map[string]interface{}
+    SyncKey response.SyncKey
+    User user
+    ChatSet string
+    Skey string
+    ClientVersion int
+    SystemTime int
+    GrayScale int
+    InviteStartCount int
+    MPSubscribeMsgCount int
+    MPSubscribeMsgList []map[string]interface{}
+    ClickReportInterval int
+}
+
+type user struct {
+    Uin int
+    UserName string
+    ickName string
+    HeadImgUrl string
+    RemarkName string
+    PYInitial string
+    PYQuanPin string
+    RemarkPYInitial string
+    RemarkPYQuanPin string
+    HideInputBarFlag int
+    StarFriend int
+    Sex int
+    Signature string
+    AppAccountFlag int
+    VerifyFlag int
+    ContactFlag int
+    WebWxPluginSwitch int
+    HeadImgFlag int
+    SnsFlag int
+}
+
+func (w *Wxbot)GetFriends() map[string]string{
+    fmt.Println(w.friend)
+    return w.friend
+}
+
+//bot初始化
 func NewWxbot(name string, timeout int) *Wxbot {
     var bot Wxbot
     bot.name = name
+
     wx_jar, err := cookiejar.New(nil)
     if err != nil {
         log.Fatal(err)
     }
 
-    bot.session = &http.Client{Jar: wx_jar, Timeout: time.Duration(timeout) *time.Second} 
+    bot.session = &http.Client{Jar: wx_jar, Timeout: time.Duration(timeout) *time.Second}
     bot.lang = "zh_cn"
-    bot.wx_host = "wx2.qq.com"
+    bot.wx_host = "wx.qq.com"
     bot.login_prefix = "login." + bot.wx_host
     bot.file_prefix = "file." + bot.wx_host
-
+    //https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxinit?r=-930349386
     bot.offical_user = []string{}
     bot.friend = make(map[string]string)
     bot.group = make(map[string]string)
@@ -148,7 +234,7 @@ func (bot *Wxbot) Login() error {
 
     var status_code int64
     var redirect_url string
-    for i:=0; i<300; i++ {
+    for i:=0; i<10; i++ {
         status_code, redirect_url, err = bot.CheckLogin()
         if err != nil {
             return err
@@ -157,29 +243,37 @@ func (bot *Wxbot) Login() error {
             break
         } else if status_code  == 201 {
             fmt.Println("Press login on your phone")
-        } else if status_code == 408 {
+            time.Sleep(3 * time.Second)
+        } else if status_code == 400 {
             return fmt.Errorf("login timeout, this qr is no longer valid, restart again\n")
+        } else if status_code == 408{
+            time.Sleep(30 * time.Second)
         }
-        time.Sleep(time.Second)
-    }
 
+    }
+    fmt.Println("GetLoginInfo")
     err = bot.GetLoginInfo(redirect_url)
     if err != nil {
         return err
     }
+    fmt.Println("WebInit")
     err = bot.WebInit()
     if err != nil {
         return err
     }
+    fmt.Println("StatusNotify")
     err = bot.StatusNotify()
     if err != nil {
         return err
     }
+    fmt.Println("GetContact")
     err = bot.GetContact()
     if err != nil {
         return err
     }
-
+    fmt.Println("end")
+    go bot.CheckSync()
+/*
     for i:=0; i<20; i ++ {
         err = bot.SendMsg("麦春明", fmt.Sprintf("麦仑%d号小管家叫你下班了...", i))
         if err != nil {
@@ -187,6 +281,7 @@ func (bot *Wxbot) Login() error {
         }
         time.Sleep(time.Duration(100) * time.Microsecond)
     }
+*/
 
     return nil
 }
@@ -228,7 +323,6 @@ func (bot *Wxbot) AddParams(req *http.Request, params map[string]string) {
 }
 
 func (bot *Wxbot) Do(req *http.Request) (string, error) {
-
     resp, err := bot.session.Do(req)
     if err != nil {
         return "", err
@@ -236,19 +330,20 @@ func (bot *Wxbot) Do(req *http.Request) (string, error) {
     defer resp.Body.Close()
 
     body, err := ioutil.ReadAll(resp.Body)
+    //fmt.Println(string(body))
     if err != nil {
         return string(body), err
     }
-
     return string(body), err
 }
-
+//获取登录uuid
 func (bot *Wxbot) GetQrLoginUuid() (string, error) {
     req, err := bot.NewRequest("GET", bot.api["js_login"], nil, "")
     if err != nil {
         return "", err
     }
     body, err := bot.Do(req)
+
     r := regexp.MustCompile(`window\.QRLogin\.code *= *(\d{3}) *; *window\.QRLogin\.uuid *= *"(\S+)"`)
     match := r.FindStringSubmatch(string(body))
     if len(match) == 0 { 
@@ -260,8 +355,10 @@ func (bot *Wxbot) GetQrLoginUuid() (string, error) {
 }
 
 func (bot *Wxbot) DrawQrOnTty() {
-    scan_url := "https://login.weixin.qq.com/l/" + bot.login_info["qr_login_uuid"]
-    qrterm.Draw(scan_url)
+    scan_url := "https://login.weixin.qq.com/qrcode/" + bot.login_info["qr_login_uuid"]
+
+    fmt.Println(scan_url)
+    //qrterm.Draw(scan_url)
 }
 
 func get_unix_time(n uint8) string {
@@ -269,13 +366,15 @@ func get_unix_time(n uint8) string {
     return strconv.Itoa(int(unix_time))[:n]
 }
 
-
+//微信登录
 func (bot *Wxbot) CheckLogin() (int64, string, error) {
     req, err := bot.NewRequest("GET", bot.api["check_login"], nil, "")
     unix_time := get_unix_time(13)
     unix_time_int, _ := strconv.ParseInt(unix_time, 10, 64)
+
     r := ^unix_time_int & 0xFFFFFFFF
 
+    //fmt.Println( )
     params := map[string]string{
         "loginicon": "false",
         "uuid": bot.login_info["qr_login_uuid"],
@@ -284,7 +383,9 @@ func (bot *Wxbot) CheckLogin() (int64, string, error) {
         "_": unix_time,
     }
     bot.AddParams(req, params)
-    body, err := bot.Do(req) 
+    body, err := bot.Do(req)
+
+
     if err != nil {
         return 0, "", err
     }
@@ -315,7 +416,7 @@ func (bot *Wxbot) CheckLogin() (int64, string, error) {
 
     return status_code, redirect_url, nil
 }
-
+//获取登录信息
 func (bot *Wxbot) GetLoginInfo(redirect_url string) error {
     req, err := bot.NewRequest("GET", redirect_url, nil, "")
     if err != nil {
@@ -334,16 +435,7 @@ func (bot *Wxbot) GetLoginInfo(redirect_url string) error {
     }
 
 
-    type msg struct {
-        Error xml.Name `xml:"error"`
-        Ret string `xml:"ret"`
-        Message string `xml:"message"`
-        Skey string `xml:"skey"`
-        Wxsid string `xml:"wxsid"`
-        Wxuin string `xml:"wxuin"`
-        Pass_ticket string `xml:"pass_ticket"`
-        Isgrayscale string `xml:"isgrayscale"`
-    }
+
     v := msg{}
     err = xml.Unmarshal([]byte(body), &v)
     if err != nil {
@@ -383,7 +475,7 @@ func (bot *Wxbot) getBaseRequest() string {
         bot.login_info["device_id"],
     )
 }
-
+//微信初始化
 func (bot *Wxbot) WebInit() error {
     header := map[string]string{"Content-Type":"application/json;charset=UTF-8"} 
     bot.login_info["device_id"] = "e" + randSeq(15)
@@ -397,66 +489,18 @@ func (bot *Wxbot) WebInit() error {
         return err
     }
     bot.AddParams(req, params)
-
     body, err := bot.Do(req)
     if err != nil {
         return err
-    }
-
-    type user struct {
-        Uin int
-        UserName string
-        ickName string
-        HeadImgUrl string
-        RemarkName string
-        PYInitial string
-        PYQuanPin string
-        RemarkPYInitial string
-        RemarkPYQuanPin string
-        HideInputBarFlag int
-        StarFriend int
-        Sex int
-        Signature string
-        AppAccountFlag int
-        VerifyFlag int
-        ContactFlag int
-        WebWxPluginSwitch int
-        HeadImgFlag int
-        SnsFlag int
-    }
- 
-    type sync_key struct {
-        Count int
-        List [] struct { Key int
-                        Val int}
-    }
-
-    type huge_resp struct {
-        BaseResponse  struct { Ret int
-                               ErrMsg string 
-                             }
-        Count int
-        ContactList []map[string]interface{}
-        SyncKey sync_key
-        User user
-        ChatSet string
-        Skey string
-        ClientVersion int
-        SystemTime int
-        GrayScale int
-        InviteStartCount int
-        MPSubscribeMsgCount int
-        MPSubscribeMsgList []map[string]interface{}
-        ClickReportInterval int
     }
     var s huge_resp
     json.Unmarshal([]byte(body), &s)
     if s.BaseResponse.Ret != 0 {
         return fmt.Errorf("ret value not zero from %s", bot.api["web_init"])
     }
-
+    bot.SyncKey = s.SyncKey
     synckey := ""
-    for i:=0; i<s.SyncKey.Count; i++ {
+    for i := 0; i<s.SyncKey.Count; i++ {
         k := s.SyncKey.List[i].Key
         v := s.SyncKey.List[i].Val
         if i == 3 {
@@ -469,14 +513,14 @@ func (bot *Wxbot) WebInit() error {
     bot.login_info["user_name"] = s.User.UserName
     return nil
 }
-
+//初始消息
 func (bot *Wxbot) StatusNotify() error {
     unix_time := get_unix_time(13)
     header := map[string]string{"Content-Type":"application/json;charset=UTF-8"} 
     data := fmt.Sprintf(`{%s,"Code":3,"FromUserName":"%s","ToUserName":"%s", "ClientMsgId":%s}`, 
             bot.getBaseRequest(), bot.login_info["user_name"], bot.login_info["user_name"], unix_time)
 
-    fmt.Println(data)
+    //fmt.Println(data)
     params := map[string]string{
         "lang": bot.lang,
         "pass_ticket": bot.login_info["pass_ticket"],
@@ -499,7 +543,7 @@ func (bot *Wxbot) StatusNotify() error {
     }
     return nil
 }
-
+//发送信息
 func (bot *Wxbot) SendMsg(to_user string, msg string) error {
     unix_time := get_unix_time(17)
     header := map[string]string{"Content-Type":"application/json;charset=UTF-8"} 
@@ -528,7 +572,7 @@ func (bot *Wxbot) SendMsg(to_user string, msg string) error {
     
     return nil
 }
-
+//获取联系人
 func (bot *Wxbot) GetContact() error {
     unix_time := get_unix_time(13)
 
@@ -578,9 +622,86 @@ func (bot *Wxbot) GetContact() error {
             bot.friend[c.NickName] = c.UserName
         }
     }
-
     return nil
 }
+
+func (bot *Wxbot)CheckSync()  {
+    for _,syncHost := range SyncHost {
+        status := bot.Sync(syncHost)
+        if status {
+            fmt.Println(syncHost)
+            for{
+
+                if !bot.Sync(syncHost) {
+                    break
+                }
+            }
+        }
+    }
+}
+
+//同步状态
+func (bot *Wxbot) Sync(syncHost string) (bool){
+    //var syncHost string
+
+    utime := get_unix_time(13)
+    url := "https://" + syncHost + "/cgi-bin/mmwebwx-bin/synccheck?"+ "r="+ utime + "&sid="+ bot.login_info["wx_sid"] + "&uin="+ bot.login_info["wx_uin"] + "&skey=" + bot.login_info["skey"]+ "&deviceid="+ bot.login_info["device_id"] + "&synckey="+bot.login_info["sync_key"] + "&_="+utime
+
+    req,_ := bot.NewRequest("GET",url,nil,"")
+    //fmt.Println(req)
+    body , _ := bot.Do(req)
+    reg := regexp.MustCompile(`window\.synccheck\=\{retcode:\"(\d+)",selector\:\"(\d+)\"\}`)
+    ret := reg.FindStringSubmatch(body)
+    fmt.Println(body)
+    if len(ret)<3{
+        return false
+    }else{
+
+        if (ret[1] == "0"){
+            if(ret[2] == "2"){
+                bot.getMsg(syncHost)
+            }
+            return true
+        }else{
+            return false
+        }
+    }
+
+}
+
+//获取消息
+func (bot *Wxbot) getMsg(syncHost string){
+    utime := get_unix_time(13)
+    unix_time_int, _ := strconv.ParseInt(utime, 10, 64)
+    r := ^unix_time_int & 0xFFFFFFFF
+    berq := BaseRequest{
+        Sid: bot.login_info["wx_sid"],
+        Uin: bot.login_info["wx_uin"],
+        Skey:bot.login_info["skey"],
+        DeviceID:bot.login_info["device_id"],
+    }
+    url := "https://" + syncHost + "/cgi-bin/mmwebwx-bin/webwxsync?sid="+ bot.login_info["wx_sid"] + "&skey=" + bot.login_info["skey"] + "&pass_ticket="+bot.login_info["pass_ticket"]
+    //fmt.Println(url)
+    params := map[string]interface{}{
+        "BaseRequest" : berq,
+        "SyncKey" : bot.SyncKey,
+        "rr" : r,
+    }
+    body,_ := json.Marshal(params)
+    req,_ := bot.NewRequest("POST",url,nil, string(body))
+    //fmt.Println(req)
+    ret,_ := bot.Do(req)
+    //fmt.Println(ret)
+    res := new (response.Webwxsync)
+    json.Unmarshal([]byte(ret),res)
+    bot.SyncKey = res.SyncKey
+    bot.login_info["sync_key"] = res.SyncKey.Encode()
+    for _,v := range res.AddMsgList{
+        fmt.Println(v)
+        //bot.msgList<-v
+    }
+}
+
 
 func stringInSlice(s string, list []string) bool {
     for _, b := range list {
