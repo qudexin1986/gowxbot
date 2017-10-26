@@ -10,13 +10,13 @@ type Msg struct {
 	MsgId string
 	FromUserName string
 	ToUserName string
-	MsgType int64
+	MsgType int
 	Content string
-	Status int64
+	Status int
 	ImgStatus  int
-	CreateTime  int64
+	CreateTime  int
 	VoiceLength  int
-	PlayLength int64
+	PlayLength int
 	FileName string
 	FileSize string
 	MediaId string
@@ -29,10 +29,10 @@ type Msg struct {
 	AppInfo AppInfo
 	HasProductId int
 	Ticket string
-	ImgHeight int64
-	ImgWidth int64
+	ImgHeight int
+	ImgWidth int
 	SubMsgType int
-	NewMsgId  int64
+	NewMsgId  int
 	OriContent string
 }
 
@@ -44,7 +44,7 @@ type AppInfo struct {
 type RecommendInfo struct {
 	UserName string
 	NickName string
-	QQNum int64
+	QQNum int
 	Province string
 	City string
 	Content string
@@ -60,16 +60,16 @@ type RecommendInfo struct {
 
 type Webwxsync struct {
 	BaseResponse BaseResponse
-	AddMsgCount int64
+	AddMsgCount int
 	AddMsgList []Msg
-	ModContactCount int64
+	ModContactCount int
 	ModContactList []interface{}
-	DelContactCount int64
+	DelContactCount int
 	DelContactList []interface{}
-	ModChatRoomMemberCount int64
+	ModChatRoomMemberCount int
 	ModChatRoomMemberList []interface{}
 	Profile Profile
-	ContinueFlag int64
+	ContinueFlag int
 	SyncKey SyncKey
 	SKey string
 	SyncCheckKey SyncKey
@@ -88,17 +88,17 @@ type BaseRequest struct {
 
 type Profile struct {
 
-	BitFlag  int64
+	BitFlag  int
 	UserName UserName
 	NickName NickName
-	BindUin int64
+	BindUin int
 	BindEmail BindEmail
 	BindMobile BindMobile
-	Status int64
+	Status int
 	Sex int
-	PersonalCard int64
+	PersonalCard int
 	Alias string
-	HeadImgUpdateFlag int64
+	HeadImgUpdateFlag int
 	HeadImgUrl string
 	Signature string
 }
@@ -176,7 +176,7 @@ type Contact struct {
 }
 
 type User struct {
-	Uin int64
+	Uin int
 	UserName string
 	NickName string
 	HeadImgUrl string
@@ -185,16 +185,16 @@ type User struct {
 	PYQuanPin string
 	RemarkPYInitial string
 	RemarkPYQuanPin string
-	HideInputBarFlag int64
-	StarFriend int64
+	HideInputBarFlag int
+	StarFriend int
 	Sex int
 	Signature string
-	AppAccountFlag int64
-	VerifyFlag int64
-	ContactFlag int64
-	WebWxPluginSwitch int64
-	HeadImgFlag int64
-	SnsFlag int64
+	AppAccountFlag int
+	VerifyFlag int
+	ContactFlag int
+	WebWxPluginSwitch int
+	HeadImgFlag int
+	SnsFlag int
 }
 
 
@@ -205,19 +205,19 @@ type MPSubscribeMsg struct {
 
 type WebInit struct {
 	BaseResponse BaseResponse
-	Count int64
+	Count int
 	ContactList []Contact
 	SyncKey SyncKey
 
 	User User
 	ChatSet string
 	SKey string
-	ClientVersion int64
-	SystemTime int64
-	GrayScale int64
-	InviteStartCount int64
-	MPSubscribeMsgCount int64
+	ClientVersion int
+	SystemTime int
+	GrayScale int
+	InviteStartCount int
+	MPSubscribeMsgCount int
 	MPSubscribeMsgList []interface{}
-	ClickReportInterval int64
+	ClickReportInterval int
 }
 

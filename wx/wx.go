@@ -559,14 +559,16 @@ func (bot *Wxbot) GetContact() error {
 }
 
 func (bot *Wxbot)CheckSync()  {
-    for _,syncHost := range SyncHost {
-        status := bot.Sync(syncHost)
-        if status {
-            fmt.Println(syncHost)
-            for{
+    for {
+        for _, syncHost := range SyncHost {
+            status := bot.Sync(syncHost)
+            if status {
+                fmt.Println(syncHost)
+                for {
 
-                if !bot.Sync(syncHost) {
-                    break
+                    if !bot.Sync(syncHost) {
+                        break
+                    }
                 }
             }
         }

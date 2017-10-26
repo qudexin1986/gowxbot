@@ -20,8 +20,6 @@ func main() {
     http.HandleFunc("/send",Send)
     http.HandleFunc("/getFriends",GetFriends)
     http.ListenAndServe("127.0.0.1:9122",nil)
-
-
 }
 
 func Send(w http.ResponseWriter,r *http.Request){
