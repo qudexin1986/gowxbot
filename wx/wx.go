@@ -16,6 +16,9 @@ import (
     "net/http"
     "net/http/cookiejar"
     "wxbot2/response"
+    "wxbot2/model"
+    "github.com/go-xorm/xorm"
+    _ "github.com/go-sql-driver/mysql"
 )
 
 
@@ -56,6 +59,9 @@ type Wxbot struct {
     offical_user []string
     msgList chan(response.Msg)
     SyncKey response.SyncKey
+    KvList map[string]string
+    mysqlConn *xorm.Engine
+    User response.User
 }
 
 
@@ -128,6 +134,7 @@ func NewWxbot(name string, timeout int) *Wxbot {
         "officialaccounts", "notification_messages", "wxid_novlwrv3lqwv11",
         "gh_22b87fa7cb3c", "wxitil", "userexperience_alarm", "notification_messages",
     }
+    bot.KvList = make(map[string]string)
 
     bot.api = make(map[string]string)
     bot.api["js_login"]  =  "https://" + bot.login_prefix + "/jslogin?appid=wx782c26e4c19acffb&fun=new&lang=" + bot.lang
@@ -136,6 +143,7 @@ func NewWxbot(name string, timeout int) *Wxbot {
     bot.api["status_notify"]  =  "https://" + bot.wx_host + "/cgi-bin/mmwebwx-bin/webwxstatusnotify"
     bot.api["send_msg"]  =  "https://" + bot.wx_host + "/cgi-bin/mmwebwx-bin/webwxsendmsg"
     bot.api["get_contact"]  =  "https://" + bot.wx_host + "/cgi-bin/mmwebwx-bin/webwxgetcontact"
+    bot.mysqlConn,_ = xorm.NewEngine("mysql","root:1987123@tcp(127.0.0.1:3306)/wxmsg?charset=utf8")
     return &bot
 }
 
@@ -442,6 +450,7 @@ func (bot *Wxbot) WebInit() error {
             synckey += strconv.Itoa(k) + "_" + strconv.Itoa(v) + "|"
         }
     }
+    bot.User = s.User
     bot.login_info["sync_key"] = synckey
     bot.login_info["user_name"] = s.User.UserName
     return nil
@@ -555,6 +564,12 @@ func (bot *Wxbot) GetContact() error {
             bot.friend[c.NickName] = c.UserName
         }
     }
+    for k,v:= range bot.group{
+        bot.KvList[v] = k
+    }
+    for k,v:= range bot.friend{
+        bot.KvList[v] = k
+    }
     return nil
 }
 
@@ -631,8 +646,17 @@ func (bot *Wxbot) getMsg(syncHost string){
     bot.SyncKey = res.SyncKey
     bot.login_info["sync_key"] = res.SyncKey.Encode()
     for _,v := range res.AddMsgList{
-        fmt.Println(v)
+        //fmt.Println(v)
+        wxmsg := new(model.Msg)
+        wxmsg.Nickname = bot.KvList[v.FromUserName]
+        jsbody ,_ := json.Marshal(v)
+        wxmsg.Data = string(jsbody)
+        wxmsg.Status = 0
+        wxmsg.CreateTime = time.Now()
+        wxmsg.UpdateTime = time.Now()
+        bot.mysqlConn.Insert(wxmsg)
         //bot.msgList<-v
+
     }
 }
 

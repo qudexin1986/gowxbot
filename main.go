@@ -11,6 +11,7 @@ import (
 )
 
 var bot *wx.Wxbot
+
 func main() {
     bot = wx.NewWxbot("hello", 50)
     err := bot.Login()

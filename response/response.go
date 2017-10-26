@@ -3,10 +3,10 @@ package response
 import (
 	"strconv"
 	"strings"
+
 )
 
 type Msg struct {
-
 	MsgId string
 	FromUserName string
 	ToUserName string
