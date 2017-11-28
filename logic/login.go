@@ -6,7 +6,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"time"
 	"encoding/json"
-	"wxrestful/model"
+	"wxbot2/model"
 	"fmt"
 )
 
