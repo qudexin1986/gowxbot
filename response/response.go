@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 
+	"encoding/xml"
 )
 
 type Msg struct {
@@ -56,23 +57,6 @@ type RecommendInfo struct {
 	Sex int
 	Ticket string
 	OpCode int
-}
-
-type Webwxsync struct {
-	BaseResponse BaseResponse
-	AddMsgCount int
-	AddMsgList []Msg
-	ModContactCount int
-	ModContactList []interface{}
-	DelContactCount int
-	DelContactList []interface{}
-	ModChatRoomMemberCount int
-	ModChatRoomMemberList []interface{}
-	Profile Profile
-	ContinueFlag int
-	SyncKey SyncKey
-	SKey string
-	SyncCheckKey SyncKey
 }
 
 type BaseResponse struct {
@@ -205,19 +189,67 @@ type MPSubscribeMsg struct {
 
 type WebInit struct {
 	BaseResponse BaseResponse
+	ChatSet string
+	ClickReportInterval int
+	ClientVersion int
 	Count int
 	ContactList []Contact
 	SyncKey SyncKey
-
 	User User
-	ChatSet string
+
 	SKey string
-	ClientVersion int
 	SystemTime int
 	GrayScale int
 	InviteStartCount int
 	MPSubscribeMsgCount int
 	MPSubscribeMsgList []interface{}
-	ClickReportInterval int
 }
+
+
+type XmlConfig struct {
+	XMLName     xml.Name `xml:"error"`
+	Ret         int      `xml:"ret"`
+	Message     string   `xml:"message"`
+	Skey        string   `xml:"skey"`
+	Wxsid       string   `xml:"wxsid"`
+	Wxuin       string   `xml:"wxuin"`
+	PassTicket  string   `xml:"pass_ticket"`
+	IsGrayscale int      `xml:"isgrayscale"`
+}
+
+type WebWxGetContact struct{
+	BaseResponse BaseResponse
+	MemberCount int
+	MemberList []User
+	Seq int
+
+}
+
+type Webwxsync struct {
+	BaseResponse BaseResponse
+	AddMsgCount int
+	AddMsgList []Msg
+	ModContactCount int
+	ModContactList []interface{}
+	DelContactCount int
+	DelContactList []interface{}
+	ModChatRoomMemberCount int
+	ModChatRoomMemberList []interface{}
+	Profile Profile
+	ContinueFlag int
+	SyncKey SyncKey
+	SKey string
+	SyncCheckKey SyncKey
+}
+
+type BatchRequest struct{
+	ChatRoomId string
+	UserName string
+}
+type WebWxbatchGetcontactRequest struct {
+	BaseResponse BaseRequest
+	Count int
+	List []BatchRequest
+}
+
 

@@ -1,37 +1,46 @@
 package main
 
 import (
-    "log"
-    "wxbot2/wx"
-    //"github.com/tonnerre/golang-pretty"
+    "github.com/gin-gonic/gin"
+    "wxbot2/logic"
     "net/http"
-    "encoding/json"
-    _ "net/http/pprof"
-    //"fmt"
+    "github.com/jinzhu/gorm"
+    _ "github.com/go-sql-driver/mysql"
+
 )
 
-var bot *wx.Wxbot
-
 func main() {
-    bot = wx.NewWxbot("hello", 50)
-    err := bot.Login()
+    router := gin.Default()
+    db,err := gorm.Open("mysql", "root:@tcp(127.0.0.1:3306)/wxmsg?charset=utf8")
+    //db.LogMode(true)
     if err != nil {
-        log.Fatal(err)
+        panic(err)
     }
-    http.HandleFunc("/send",Send)
-    http.HandleFunc("/getFriends",GetFriends)
-    http.ListenAndServe("127.0.0.1:9122",nil)
+    router.Use(func(c *gin.Context){
+        c.Set("db",db)
+    })
+
+
+    router.Use(gin.HandlerFunc(func(c *gin.Context) {
+
+        c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+        c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        if c.Request.Method == "OPTIONS" {
+            c.Writer.Header().Set("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept")
+            c.AbortWithStatus(http.StatusOK)
+            return
+        }
+        c.Next()
+    }))
+
+
+    router.GET("/create", logic.Create)
+    router.GET("/status", logic.Status)
+    router.GET("/start/:id",logic.Start)
+    router.POST("/login",logic.Login)
+    router.POST("/register",logic.Register)
+    router.POST("/friends",logic.Friends)
+    router.POST("/setplug",logic.SetPlug)
+
+    router.Run(":8080")
 }
-
-func Send(w http.ResponseWriter,r *http.Request){
-    bot.SendMsg("没事就逛逛","test")
-}
-
-func GetFriends(w http.ResponseWriter,r *http.Request)  {
-	//w.Header("")
-	//fmt.Println(bot)
-    b,_ := json.Marshal(bot.GetFriends())
-    w.Write(b)
-}
-
-
