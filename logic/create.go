@@ -12,6 +12,7 @@ import (
 	"wxbot2/model"
 	"wxbot2/response"
 	"wxbot2/manager"
+	"wxbot2/plug"
 )
 
 func Create(c *gin.Context) {
@@ -35,6 +36,7 @@ func Create(c *gin.Context) {
 		if dbc.Save(wxb).Error != nil{
 			dbc.Debug().Table("wxbot").Where("uin=?",wxb.Uin).Update(wxb)
 		}
+		bot.MsgHander.Response = plug.Weather
 		manager.GlobalSessionManager.Set(bot.Uuid,bot)
 	}
 	bot.Handler = func( msg []byte) {
@@ -47,6 +49,7 @@ func Create(c *gin.Context) {
 
 		dta := new(response.Webwxsync)
 		json.Unmarshal(msg, dta)
+
 		if dta.AddMsgCount > 0{
 			for _,ms := range dta.AddMsgList{
 				if bot.SpecialContact[ms.FromUserName]{
